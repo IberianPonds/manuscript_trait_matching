@@ -1,13 +1,8 @@
-# History files
-.Rhistory
-.Rapp.history
-
-# Session Data files
-.RData
-.RDataTmp
-
 # User-specific files
 .Ruserdata
+
+rosm.cache
+wc10
 
 # Example code in package build process
 *-Ex.R
@@ -17,9 +12,6 @@
 
 # Output files from R CMD check
 /*.Rcheck/
-
-# RStudio files
-.Rproj.user/
 
 # produced vignettes
 vignettes/*.html
@@ -39,11 +31,26 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# pkgdown site
-docs/
+# Prevent users to commit their own RProject
+.Rproj.user
+.Rproj
 
-# translation temp files
-po/*~
+# Prevent users to commit their own .RData and .Rhistory in mutual area
+.RData
+.Rhistory
+.Rapp.history
 
-# RStudio Connect folder
-rsconnect/
+# Temporary files
+*~
+~$*.doc*
+~$*.xls*
+*.xlk
+~$*.ppt*
+
+# Prevent mac users to commit .DS_Store files
+*.DS_Store
+
+# Prevent users to commit the README files created by RStudio
+*README.html
+*README_cache/
+#*README_files/
