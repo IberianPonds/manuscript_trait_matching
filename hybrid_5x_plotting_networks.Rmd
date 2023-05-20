@@ -1,0 +1,370 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r include = FALSE}
+# load packages
+library(tidyr)
+library(reshape)
+library(scales)
+library(RColorBrewer)
+library(igraph)
+library(NetIndices)
+library(cheddar)
+```
+
+
+#load data and functions
+```{r}
+# load predictions
+# RF only
+load(file = "./output/hybrid_rf_interactions.RData")
+
+# load edges
+# RF only
+load(file = "./output/hybrid_rf_edges.RData")
+
+# load graphs
+# RF only
+load(file = "./output/hybrid_rf_graph.RData")
+
+#get traits
+load("./data/hybrid_data_trait_phylo.RData")
+
+#get regional matrices
+#load("./output/hybrid_data_prep_IPFW.RData")
+
+#load("~/iberianponds/food-webs/output/data_prep_IPFW.RData")[2]
+load(paste0(dirname(dirname(getwd())), "/Github/manuscript_trait_matching/data/data_prep_IPFW.RData"))[2]
+
+source(file = "./functions/functions_plotting.R")
+source(file = "./functions/functions_metawebs.R")
+
+#interact_con_res_ib_predicted <- interact_con_res_ib_filter2
+
+site_labels <- c(
+  "Murcia", "Toledo", "Evora",
+  "Porto", "Jaca", "Penalara"
+)
+
+color_ib <- c(
+  "darkred", "red", "gold",
+  "lightskyblue", "royalblue3", "midnightblue"
+)
+
+bar_colors <- c("#008000", brewer.pal(9, 'YlOrRd'), "brown") # default palette
+bar_colors <- c("darkgreen", rev(brewer.pal(9, 'Spectral')), "brown") # default palette
+bar_colors <- c("darkgreen", rev(brewer.pal(9, 'Spectral')), "brown", "black") # default palette
+
+trait_categories <- c("phyto_producer", 
+                      "zoo_herbivore", "zoo_omnivore", "zoo_predator",
+                      "macro_herbivore", "macro_detritivore", "macro_omnivore", "macro_predator"
+                      )
+
+```
+
+# remove detritus
+```{r}
+.data <- hybrid_rf_graph
+.data <- delete_vertices(.data, c("detritus"))
+```
+
+# Size-abundance network only
+```{r, fig.width=12, fig.asp=0.5, fig.cap=" ", dpi=150}
+
+# load graph
+.graph <- .data
+
+graph.properties <-
+  .graph %>%
+  get.adjacency(., sparse = F) %>%
+  GenInd(.)
+
+# calculate food web metrics
+metric <- calc_fw_metrics(.graph)
+
+# set trophic level for producers
+trophic_level_data <-
+  cbind(igraph::as_data_frame(.graph, what = "vertices"), metric)
+
+metric[trophic_level_data$category == "phyto_producer"] <- 0.5
+#metric[trophic_level_data$category == "detritus"] <- 0
+
+# set colours and ranks
+nodes_trophic_colors <- set_colours_by_category(.graph)
+#nodes_trophic_colors[nodes_trophic_colors == "detritus"] <- "black"
+
+# set edge colours by interaction type
+edge_colours <- set_edges_by_interaction_type(.graph)[[1]]
+edge_colours <- NULL
+
+links <- cbind(igraph::as_data_frame(.graph, what = "edges"))
+troph <- trophic_level_data %>% dplyr::select(name, avg.M, avg.N)
+
+links_final <- links %>%
+  merge(x = links, y = troph, by.x = "from", by.y = "name") %>% 
+  merge(x = ., y = troph, by.x = "to", by.y = "name")
+
+# set layout
+layout_web <- layout_nicely(.graph)
+layout_web[, 1] <-
+  runif(length(V(.graph))) # randomly assign along x-axis
+layout_web[, 2] <-
+  scales::rescale(log(as.vector(V(.graph)$avg.M)), to = c(-1, 1))
+layout_web[, 2] <-
+  log(as.vector(V(.graph)$avg.M))
+```
+
+
+```{r metaweb, fig.width=12, fig.asp=0.5, fig.cap=" ", dpi=150}
+par(mfrow = c(1,1), mar = c(4,4,4,4), oma = c(3,3,3,3), pty = "s")
+
+plot.igraph(.data,
+  cex = 4, #asp = 1,
+  rescale = T, xlim = c(-1, 1), ylim = c(-1, 1),
+  mark.groups = T, mark.col = 0, mark.border = 0,
+  edge.color = edge_colours, edge.arrow.size = 0, edge.curved = 0.2,
+  edge.width = 0.5,
+  #vertex.size = rescale(metric, to = c(3,8)),
+  vertex.size = 8,
+  vertex.color = nodes_trophic_colors,
+  vertex.border = NULL,
+  vertex.frame.color = 0,
+  vertex.label = "",
+  vertex.label.dist = 2,
+  layout = layout_web,
+  #cex.main = 0.8,
+  # main = paste("morpho_metaweb_pruned", 
+  #  "\n(N=", graph.properties$N,
+  #  ", L=", round(graph.properties$Ltot, digits = 2),
+  #  ", LD=", round(graph.properties$LD, digits = 2),
+  #  ", C=", round(graph.properties$C, digits = 2), ")",
+  #  sep = ""
+  # )
+)
+
+axis(
+  side = 2,
+  cex.axis = 1,
+  cex.lab = 2,
+  #labels = round(seq(range(log(as.vector(V(.graph)$avg.M)))[1], range(log(as.vector(V(.graph)$avg.M)))[2], length.out = 5), digits = 0),
+  labels = seq(from = -15, to = 10, by = 5),
+  at = seq(from = -1, to = 1, length.out = 6)
+)
+
+mtext("log(bodymass)", cex = 2, side=2, line=3, las=0, col="black")
+
+#legend('bottom', horiz = T, legend=trait_categories, pt.cex=1.5, col=c(bar_colors), pch=21, pt.bg=c(bar_colors), cex = 1.5)
+#legend(x = "bottom", legend = trait_categories, pch = 16, col = bar_colors, cex = 1.2, horiz = T)
+```
+
+```{r fig_2_abundance_all species, fig.width=12, fig.asp=0.5, fig.cap=" ", dpi=150}
+
+par(mfrow = c(1,1), mar = c(4,4,4,4), oma = c(3,3,3,3), pty = "s")
+
+dat_verts <- igraph::as_data_frame(.data, what = "both")$vertices
+
+dat_verts$category <- factor(dat_verts$category, levels = trait_categories)
+
+plot(x = log(dat_verts$avg.N), y = log(dat_verts$avg.M), col = nodes_trophic_colors, pch = 16, cex = 4,
+     xlab = "log(abundance)", ylab = "log(bodymass)", cex.lab = 2, cex.axis = 1, type = "n")
+
+# add links as seguements
+segments(
+  x0 = log(links_final[,"avg.N.x"]),
+  y0 = log(links_final[,"avg.M.x"]),
+  x1 = log(links_final[,"avg.N.y"]),
+  y1 = log(links_final[,"avg.M.y"]),
+  col = "lightgrey", lwd = 0.1)
+
+# add nodes
+points(x = log(dat_verts$avg.N),
+       y = log(dat_verts$avg.M),
+       bg = nodes_trophic_colors, col = 0, pch = 21, cex = 4)
+
+```
+```{r}
+# remove no data vertices
+
+sub_data <- hybrid_rf_graph
+
+datdat <- as_data_frame(sub_data, what = "vertices") %>% 
+  dplyr::filter(avg.N>1) %>% 
+  dplyr::select(name) %>% 
+  unlist() %>% 
+  as.vector()
+
+sub_data <- induced_subgraph(sub_data, datdat)
+```
+
+```{r fig_2_chopped_species, fig.width=12, fig.asp=0.5, fig.cap=" ", dpi=150}
+
+par(mfrow = c(1,1), mar = c(4,4,4,4), oma = c(3,3,3,3), pty = "s")
+
+# node colours subsets
+nodes_trophic_colors <- set_colours_by_category(sub_data)
+
+# links subsets
+links <- cbind(igraph::as_data_frame(sub_data, what = "edges"))
+troph <- trophic_level_data %>% dplyr::select(name, avg.M, avg.N)
+
+links_final <- links %>%
+  merge(x = links, y = troph, by.x = "from", by.y = "name") %>% 
+  merge(x = ., y = troph, by.x = "to", by.y = "name")
+
+dat_verts <- igraph::as_data_frame(sub_data, what = "both")$vertices
+
+dat_verts$category <- factor(dat_verts$category, levels = trait_categories)
+
+plot(x = log(dat_verts$avg.N), y = log(dat_verts$avg.M), col = nodes_trophic_colors, pch = 16, cex = 4,
+     xlab = "log(abundance)", ylab = "log(bodymass)", cex.lab = 2, cex.axis = 1, type = "n")
+
+# add links as seguements
+segments(
+  x0 = log(links_final[,"avg.N.x"]),
+  y0 = log(links_final[,"avg.M.x"]),
+  x1 = log(links_final[,"avg.N.y"]),
+  y1 = log(links_final[,"avg.M.y"]),
+  col = "lightgrey", lwd = 0.1)
+
+# add nodes
+points(x = log(dat_verts$avg.N),
+       y = log(dat_verts$avg.M),
+       bg = nodes_trophic_colors, col = 0, pch = 21, cex = 4)
+
+```
+
+
+# Regional metawebs
+```{r fig_2_chopped_species, fig.width=12, fig.asp=0.5, fig.cap=" ", dpi=150}
+# get edges
+.edges <- as_data_frame(.data)
+
+m <- rbind(c(1, 2), c(3, 4), c(5, 6)) 
+
+# set global params
+cex.main.size <- 0.8
+cex.fig.custom <- 0.8
+edge.size.custom <- 0.1
+
+# set layout based on matrix m
+layout(m)
+
+site_ids = c("MR", "TL", "EV", "PT", "JC", "PN")
+edge_list_mat_hybrid_regions <- list()
+
+regional.graph.properties <- NULL
+
+for (i in 1:6) {
+  
+  par(mfrow = c(1,1), mar = c(4,4,4,4), oma = c(3,3,3,3), pty = "s")
+  
+  site_id <- site_ids[i]
+  
+  #sum counts
+  species_counts <- colSums(hybrid_species_matrix_regions[[i]])
+  
+  #get ones more than zero
+  region_species_list <- names(species_counts[species_counts > 0])
+  
+  #select regional species list from predicted links for both consumers and resources
+  region_interactions <-
+    .edges[.edges$to %in% region_species_list & .edges$from %in% region_species_list,]
+  
+  #prepare edge list mat for regions. Note that it is necessary to set column name
+  edge_list_mat_region <- prepare_graphs_plotting(region_interactions, hybrid_data_trait_phylo, .column_name = "unique_id")
+  edge_list_mat_hybrid_regions[[i]] <- edge_list_mat_region
+
+  #plot interaction in 6 regions
+  # load data
+  #.data <- add_detritus_to_graph(.graph = edge_list_mat_hybrid_regions[[i]])
+  
+  graph.properties <-
+    .data %>%
+    get.adjacency(., sparse = F) %>%
+    GenInd(.)
+  
+  # calculate food web metrics
+  metric <- calc_fw_metrics(.data)
+  
+  # set trophic level for producers
+  trophic_level_data <- cbind(igraph::as_data_frame(.data, what = "vertices"), metric)
+  metric[trophic_level_data$category == "phyto_producer"] <- 0.5
+  #metric[trophic_level_data$category == "detritus"] <- 0
+  
+  # set colours and ranks
+  nodes_trophic_colors <- set_colours_by_category(.data)
+  #nodes_trophic_colors[nodes_trophic_colors == "detritus"] <- "black"
+  
+  # set edge colours by interaction type
+  edge_colours <- set_edges_by_interaction_type(.data)[[1]]
+  edge_colours <- NULL
+  
+  # set layout
+  layout_web <- layout_nicely(.data)
+  layout_web[, 1] <- runif(length(V(.data))) # randomly assign along x-axis
+  layout_web[, 2] <- scales::rescale(log(as.vector(V(.data)$avg.M)), to = c(-1,1))
+  
+  plot.igraph(.data,
+    cex = cex.fig.custom,
+    asp = 1,
+    rescale = T, xlim = c(-1, 1), ylim = c(-1, 1),
+    mark.groups = T, mark.col = 0, mark.border = 0,
+    edge.color = edge_colours, edge.arrow.size = 0, edge.curved = 0.2,
+    edge.width = edge.size.custom,
+    vertex.size = scales::rescale(metric, to = c(3,8)),
+    vertex.color = nodes_trophic_colors,
+    vertex.border = NULL,
+    vertex.frame.color = nodes_trophic_colors,
+    vertex.label = "",
+    vertex.label.dist = 2,
+    axes = F,
+    xlab = "",
+    ylab = "",
+    layout = layout_web
+    )
+  
+  # axis(side = 2, cex = 4, cex.axis = 1, cex.lab = 2,
+  #      labels = round(seq(log(range(V(.data)$avg.M)[1]), log(range(V(.data)$avg.M)[2]), length.out = 5), digits = 0),
+  #      at = seq(from = -1, to = 1, by = 0.5)
+  #      )
+  
+  # title(cex.main = cex.main.size,
+  #   main = paste(site_labels[i],
+  #    #"\n(N=", graph.properties$N,
+  #    #", L=", round(graph.properties$Ltot, digits = 2),
+  #    #", LD=", round(graph.properties$LD, digits = 2),
+  #    #", C=", round(graph.properties$C, digits = 2), ")",
+  #    sep = ""
+  #   ),
+  #   ylab = "bodysize", cex.lab = 2
+  # )
+  
+  
+  regional.graph.properties <- rbind(
+    regional.graph.properties,
+    cbind(region = paste(site_id), data.frame(graph.properties))
+)
+
+}
+```
+
+# check species with abundance
+```{r}
+# create objects
+t_traits <- hybrid_species_traits_table_global
+t_rf <- as_data_frame(hybrid_rf_graph, what = "vertices")
+colnames(t_rf)[1] <- "unique_id"
+
+# merge
+new_table <- dplyr::left_join(t_rf, t_traits, "unique_id")
+
+plot(new_table$avg.N.x, new_table$avg.N.y)
+
+new_table %>% 
+  dplyr::filter(avg.N.x>1) %>% 
+  dplyr::select(name) %>% 
+  unlist() %>% 
+  as.vector()
+```
