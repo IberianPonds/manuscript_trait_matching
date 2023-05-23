@@ -33,7 +33,7 @@ load(file = "./output/hybrid_rf_graph.RData")
 load("./data/hybrid_data_trait_phylo.RData")
 
 #get regional matrices
-#load("./output/hybrid_data_prep_IPFW.RData")
+load("./data/hybrid_data_prep_IPFW.RData")
 
 #load("~/iberianponds/food-webs/output/data_prep_IPFW.RData")[2]
 load(paste0(dirname(dirname(getwd())), "/Github/manuscript_trait_matching/data/data_prep_IPFW.RData"))[2]
@@ -352,19 +352,19 @@ for (i in 1:6) {
 
 # check species with abundance
 ```{r}
-# create objects
-t_traits <- hybrid_species_traits_table_global
-t_rf <- as_data_frame(hybrid_rf_graph, what = "vertices")
-colnames(t_rf)[1] <- "unique_id"
-
-# merge
-new_table <- dplyr::left_join(t_rf, t_traits, "unique_id")
-
-plot(new_table$avg.N.x, new_table$avg.N.y)
-
-new_table %>% 
-  dplyr::filter(avg.N.x>1) %>% 
-  dplyr::select(name) %>% 
-  unlist() %>% 
-  as.vector()
+# # create objects
+# t_traits <- hybrid_species_traits_table_global
+# t_rf <- as_data_frame(hybrid_rf_graph, what = "vertices")
+# colnames(t_rf)[1] <- "unique_id"
+# 
+# # merge
+# new_table <- dplyr::left_join(t_rf, t_traits, "unique_id")
+# 
+# plot(new_table$avg.N.x, new_table$avg.N.y)
+# 
+# new_table %>% 
+#   dplyr::filter(avg.N.x>1) %>% 
+#   dplyr::select(name) %>% 
+#   unlist() %>% 
+#   as.vector()
 ```
