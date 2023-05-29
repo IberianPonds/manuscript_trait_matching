@@ -2,8 +2,6 @@
 title: "R Notebook"
 ---
 
-## Description:
-This script uses one independent dataset (Brose et al. 2019) to infer food web interactions in Iberian Ponds hybrid dataset (morphological+ edna), by applying trait matching (adapted from Laigle et al. 2018).
 
 ```{r inlude= FALSE}
 # load packages
@@ -30,8 +28,7 @@ source("./functions/functions_metawebs.R")
 source("./functions/functions_plotting.R")
 ```
 
-## Step 4: Building randomforest models
-### Step 4a: randomforest model of brose dataset
+## Step 1:Building randomforest models
 ```{r}
 # load random forest based on only positive interactions
 load("./output/rf_mod_diff_observed_metaweb.RData")
@@ -56,7 +53,7 @@ hybrid_interact_con_res_ib_with_species_codes <-
   hybrid_interact_con_res_ib_with_species_codes %>% drop_na(.)
 ```
 
-### Step 5 Mean decrease Gini (contribution of each trait)
+## Step 2: Mean decrease Gini (contribution of each trait)
 The ‘mean decrease Gini’ (total decrease in node impurities from splitting on the variable) is proportional to the contribution of each trait in the model. High mean decrease Gini represents a high importance of the variable. 
 
 ```{r fig.cap="trait contribution randomForest", fig.width=7}
@@ -93,7 +90,7 @@ dev.off()
 ```
 
 
-### Step 6a: Predicting interaction in the IberianPonds based on Brose's randomforest model
+### Step 3: Predicting interaction in the Iberian Pond Network (IPN) based on Brose dataset(independent interactions dataset) randomforest model
 ```{r, fig.cap = "Predicted IberianPonds (using randomForest Brose)"}
 set.seed(1234)
 
@@ -105,187 +102,24 @@ hybrid_interact_con_res_ib <- cbind(hybrid_interact_con_res_ib_with_species_code
 ```
 
 
-# Calculate TSS for different interactions (predator, grazer, herbivore)
 ```{r}
-TR_all <- 0.2
-
-# all interactions
-# plot interactions probabilities
-
-TSS <- CalcTSS(hybrid_interact_con_res_ib, thresh = TR_all)
-
-# Predators
-# plot interactions probabilities
-predator_interactions <- hybrid_interact_con_res_ib %>%
-  dplyr::filter(con_feeding_type.predator == "1")
-
-TSS_pred <- CalcTSS(predator_interactions, thresh = quantile(predator_interactions$pred1, c(.75)))
-
-# omnivores
-omnivores_interactions <- hybrid_interact_con_res_ib %>%
-  dplyr::filter(con_feeding_type.omnivore == 1) # here we have others (herbivore, omnivore, detritivore) except predators
-
-TSS_omni <- CalcTSS(omnivores_interactions, thresh = quantile(omnivores_interactions$pred1, c(.75)))
-
-# Herbivores
-herbivore_interactions <- hybrid_interact_con_res_ib %>%
-  dplyr::filter(con_feeding_type.herbivore == "1") # here we have only herbivores
-
-TSS_herb <- CalcTSS(herbivore_interactions, thresh = quantile(herbivore_interactions$pred1, c(.75)))
-
-# summary figure
-prob_distribs <- rbind(
-  cbind(filter = rep("all links", length(hybrid_interact_con_res_ib$pred1)), prob = hybrid_interact_con_res_ib$pred1),
-  cbind(filter = rep("predation", length(predator_interactions$pred1)), prob = predator_interactions$pred1),
-  cbind(filter = rep("omnivory", length(omnivores_interactions$pred1)), prob = omnivores_interactions$pred1),
-  cbind(filter = rep("herbivory", length(herbivore_interactions$pred1)), prob = herbivore_interactions$pred1)
-) %>%
-  as.data.frame() %>%
-  mutate(
-    prob = as.numeric(prob),
-    filter = factor(filter, levels = c("all links", "predation", "omnivory", "herbivory"))
-  )
-
-plot_hybrid_distribs <-
-  prob_distribs %>%
-  ggplot(aes(x = prob)) +
-  facet_grid(vars(filter)) +
-  geom_histogram(aes(fill = filter))
-
-save(plot_hybrid_distribs, file = "./figures/plot_hybrid_distribs.RData")
-
-# summary table
-tss_full <-
-  cbind(
-    data.frame(thresh_levels = c(TR_all, quantile(predator_interactions$pred1, c(.75)), quantile(omnivores_interactions$pred1, c(.75)), quantile(herbivore_interactions$pred1, c(.75)))),
-    rbind(
-      TSS = round(cbind(TSS[, 1:4] / sum(TSS[, 1:4]) * 100, TSS = TSS[, 5]), 2),
-      TSS_pred = round(cbind(TSS_pred[, 1:4] / sum(TSS_pred[, 1:4]) * 100, TSS = TSS_pred[, 5]), 2),
-      TSS_omni = round(cbind(TSS_omni[, 1:4] / sum(TSS_omni[, 1:4]) * 100, TSS = TSS_omni[, 5]), 2),
-      TSS_herb = round(cbind(TSS_herb[, 1:4] / sum(TSS_herb[, 1:4]) * 100, TSS = TSS_herb[, 5]), 2)
-    )
-  )
-
-colnames(tss_full)[2:5] <- c("a = true positive", "b = false positive", "c = false negative", "d = true negative")
-
-tss_full
-
-save(tss_full, file = "./output/hybrid_tss_table.RData")
-```
-
-# create different objects
-```{r}
-T_pred <- quantile(predator_interactions$pred1, c(.75))
-T_omni <- quantile(omnivores_interactions$pred1, c(.75))
-T_herb <- quantile(herbivore_interactions$pred1, c(.75))
-
-############################################################################################################################################
-### Rule-based priority AND RF>0.2
-############################################################################################################################################
-
-# rule based interactions
-hybrid_rule_based_interactions <- hybrid_interact_con_res_ib
-
-names(hybrid_rule_based_interactions)[names(hybrid_rule_based_interactions) == "value"] <- "weight"
-
-hybrid_rule_based_edges <-
-  hybrid_rule_based_interactions %>%
-  dplyr::select(
-    con_code, res_code, weight
-  )
-
-#rename and change the order
-names(hybrid_rule_based_edges)[names(hybrid_rule_based_edges) == "con_code"] <- "from"
-names(hybrid_rule_based_edges)[names(hybrid_rule_based_edges) == "res_code"] <- "to"
-hybrid_rule_based_graph <- prepare_graphs_plotting(hybrid_rule_based_edges, hybrid_data_trait_phylo, .column_name = "unique_id")
-
-############################################################################################################################################
-## Rule-based + randomForest priority when RF>0.2 priority
-############################################################################################################################################
-
-hybrid_rf_priority_interactions <- hybrid_interact_con_res_ib
-
-### select predator interactions
-  
-hybrid_rf_priority_interactions[
-    hybrid_rf_priority_interactions$con_feeding_type.predator == 1 &
-      hybrid_rf_priority_interactions$value == 1 &
-      hybrid_rf_priority_interactions$pred1 < T_pred,]$value <- 0
-
-hybrid_rf_priority_interactions[
-    hybrid_rf_priority_interactions$con_feeding_type.predator == 1 &
-      hybrid_rf_priority_interactions$value == 0 &
-      hybrid_rf_priority_interactions$pred1 >= T_pred,]$value <- 1
-
-### select omnivore interactions
- if(length(
-   hybrid_rf_priority_interactions[
-     hybrid_rf_priority_interactions$con_feeding_type.omnivore == 1 &
-     hybrid_rf_priority_interactions$value == 1 &
-     hybrid_rf_priority_interactions$pred1 < T_omni,]$value
-   )>0) {
-   hybrid_rf_priority_interactions[
-     hybrid_rf_priority_interactions$con_feeding_type.omnivore == 1 &
-       hybrid_rf_priority_interactions$value == 1 &
-       hybrid_rf_priority_interactions$pred1 < T_omni,]$value <- 0
-   }
-  
-if(length(
-    hybrid_rf_priority_interactions[
-      hybrid_rf_priority_interactions$con_feeding_type.omnivore == 1 &
-      hybrid_rf_priority_interactions$value == 0 &
-      hybrid_rf_priority_interactions$pred1 >= T_omni,]$value
-    )>0) {
-    hybrid_rf_priority_interactions[
-      hybrid_rf_priority_interactions$con_feeding_type.omnivore == 1 &
-        hybrid_rf_priority_interactions$value == 0 &
-        hybrid_rf_priority_interactions$pred1 >= T_omni,]$value <- 1
-}
-
-### select herbivore interactions
-hybrid_rf_priority_interactions[
-hybrid_rf_priority_interactions$con_feeding_type.herbivore == 1 &
-  hybrid_rf_priority_interactions$value == 1 &
-  hybrid_rf_priority_interactions$pred1 < T_herb,]$value <- 0
-
-hybrid_rf_priority_interactions[
-  hybrid_rf_priority_interactions$con_feeding_type.herbivore == 1 &
-    hybrid_rf_priority_interactions$value == 0 &
-    hybrid_rf_priority_interactions$pred1 >= T_herb,]$value <- 1
-
-colnames(hybrid_rf_priority_interactions)[colnames(hybrid_rf_priority_interactions)=="value"] <- "weight"
-
-hybrid_rf_priority_edges <-
-  hybrid_rf_priority_interactions %>%
-  dplyr::select(
-    con_code, res_code, weight
-  )
-
-#rename and change the order
-names(hybrid_rf_priority_edges)[names(hybrid_rf_priority_edges) == "con_code"] <- "from"
-names(hybrid_rf_priority_edges)[names(hybrid_rf_priority_edges) == "res_code"] <- "to"
-hybrid_rf_priority_graph <- prepare_graphs_plotting(hybrid_rf_priority_edges, hybrid_data_trait_phylo, .column_name = "unique_id")
-```
-
-
-```{r}
-############################################################################################################################################
-## RandomForest only when RF>0.2 priority
-############################################################################################################################################
+#RandomForest only when RF>0.5 
+# Use 0.5 threshold value for all interaction types
+TR_all <- 0.5
 
 hybrid_rf_interactions <- hybrid_interact_con_res_ib
 
 ### select predator interactions
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.predator==1 & hybrid_rf_interactions$pred1 >= T_pred,]$value <- 1
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.predator==1 & hybrid_rf_interactions$pred1 < T_pred,]$value <- 0
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.predator==1 & hybrid_rf_interactions$pred1 >= TR_all,]$value <- 1
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.predator==1 & hybrid_rf_interactions$pred1 < TR_all,]$value <- 0
 
 ### select omnivore interactions
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.omnivore==1 & hybrid_rf_interactions$pred1 >= T_omni,]$value <- 1
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.omnivore==1 & hybrid_rf_interactions$pred1 < T_omni,]$value <- 0
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.omnivore==1 & hybrid_rf_interactions$pred1 >= TR_all,]$value <- 1
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.omnivore==1 & hybrid_rf_interactions$pred1 < TR_all,]$value <- 0
   
 ### select herbivore interactions
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.herbivore==1 & hybrid_rf_interactions$pred1 >= T_herb,]$value <- 1
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.herbivore==1 & hybrid_rf_interactions$pred1 < T_herb,]$value <- 0
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.herbivore==1 & hybrid_rf_interactions$pred1 >= TR_all,]$value <- 1
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.herbivore==1 & hybrid_rf_interactions$pred1 < TR_all,]$value <- 0
 
 colnames(hybrid_rf_interactions)[colnames(hybrid_rf_interactions)=="value"] <- "weight"
 
@@ -304,27 +138,9 @@ hybrid_rule_based_graph <- add_detritus_to_graph(.graph = hybrid_rule_based_grap
 hybrid_rf_priority_graph <- add_detritus_to_graph(.graph = hybrid_rf_priority_graph)
 hybrid_rf_graph <- add_detritus_to_graph(.graph = hybrid_rf_graph)
 
-# save predictions
-# rules based only
-save(hybrid_rule_based_interactions, file = "./output/hybrid_rule_based_interactions.RData")
-# RF priority
-save(hybrid_rf_priority_interactions, file = "./output/hybrid_rf_priority_interactions.RData")
-# RF only
+
+# save prediction objects with different consensus filters (RF only)
 save(hybrid_rf_interactions, file = "./output/hybrid_rf_interactions.RData")
-
-# save prediction objects with different consensus filters
-# rules based only
-save(hybrid_rule_based_edges, file = "./output/hybrid_rule_based_edges.RData")
-# RF priority
-save(hybrid_rf_priority_edges, file = "./output/hybrid_rf_priority_edges.RData")
-# RF only
 save(hybrid_rf_edges, file = "./output/hybrid_rf_edges.RData")
-
-# save prediction objects with different consensus filters
-# rules based only
-save(hybrid_rule_based_graph, file = "./output/hybrid_rule_based_graph.RData")
-# RF priority
-save(hybrid_rf_priority_graph, file = "./output/hybrid_rf_priority_graph.RData")
-# RF only
 save(hybrid_rf_graph, file = "./output/hybrid_rf_graph.RData")
 ```

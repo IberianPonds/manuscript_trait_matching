@@ -41,8 +41,6 @@ load(paste0(dirname(dirname(getwd())), "/Github/manuscript_trait_matching/data/d
 source(file = "./functions/functions_plotting.R")
 source(file = "./functions/functions_metawebs.R")
 
-#interact_con_res_ib_predicted <- interact_con_res_ib_filter2
-
 site_labels <- c(
   "Murcia", "Toledo", "Evora",
   "Porto", "Jaca", "Penalara"
@@ -159,34 +157,9 @@ mtext("log(bodymass)", cex = 2, side=2, line=3, las=0, col="black")
 #legend(x = "bottom", legend = trait_categories, pch = 16, col = bar_colors, cex = 1.2, horiz = T)
 ```
 
-```{r fig_2_abundance_all species, fig.width=12, fig.asp=0.5, fig.cap=" ", dpi=150}
 
-par(mfrow = c(1,1), mar = c(4,4,4,4), oma = c(3,3,3,3), pty = "s")
-
-dat_verts <- igraph::as_data_frame(.data, what = "both")$vertices
-
-dat_verts$category <- factor(dat_verts$category, levels = trait_categories)
-
-plot(x = log(dat_verts$avg.N), y = log(dat_verts$avg.M), col = nodes_trophic_colors, pch = 16, cex = 4,
-     xlab = "log(abundance)", ylab = "log(bodymass)", cex.lab = 2, cex.axis = 1, type = "n")
-
-# add links as seguements
-segments(
-  x0 = log(links_final[,"avg.N.x"]),
-  y0 = log(links_final[,"avg.M.x"]),
-  x1 = log(links_final[,"avg.N.y"]),
-  y1 = log(links_final[,"avg.M.y"]),
-  col = "lightgrey", lwd = 0.1)
-
-# add nodes
-points(x = log(dat_verts$avg.N),
-       y = log(dat_verts$avg.M),
-       bg = nodes_trophic_colors, col = 0, pch = 21, cex = 4)
-
-```
 ```{r}
 # remove no data vertices
-
 sub_data <- hybrid_rf_graph
 
 datdat <- as_data_frame(sub_data, what = "vertices") %>% 
@@ -198,7 +171,8 @@ datdat <- as_data_frame(sub_data, what = "vertices") %>%
 sub_data <- induced_subgraph(sub_data, datdat)
 ```
 
-```{r fig_2_chopped_species, fig.width=12, fig.asp=0.5, fig.cap=" ", dpi=150}
+# Plot size abundance scaling network
+```{r, fig.width=12, fig.asp=0.5, fig.cap=" ", dpi=150}
 
 par(mfrow = c(1,1), mar = c(4,4,4,4), oma = c(3,3,3,3), pty = "s")
 
@@ -236,7 +210,7 @@ points(x = log(dat_verts$avg.N),
 ```
 
 
-# Regional metawebs
+# Plot regional metawebs
 ```{r fig_2_chopped_species, fig.width=12, fig.asp=0.5, fig.cap=" ", dpi=150}
 # get edges
 .edges <- as_data_frame(.data)
@@ -348,23 +322,4 @@ for (i in 1:6) {
 )
 
 }
-```
-
-# check species with abundance
-```{r}
-# # create objects
-# t_traits <- hybrid_species_traits_table_global
-# t_rf <- as_data_frame(hybrid_rf_graph, what = "vertices")
-# colnames(t_rf)[1] <- "unique_id"
-# 
-# # merge
-# new_table <- dplyr::left_join(t_rf, t_traits, "unique_id")
-# 
-# plot(new_table$avg.N.x, new_table$avg.N.y)
-# 
-# new_table %>% 
-#   dplyr::filter(avg.N.x>1) %>% 
-#   dplyr::select(name) %>% 
-#   unlist() %>% 
-#   as.vector()
 ```
