@@ -35,8 +35,8 @@ load("./data/hybrid_data_trait_phylo.RData")
 #get regional matrices
 load("./data/hybrid_data_prep_IPFW.RData")
 
-#load("~/iberianponds/food-webs/output/data_prep_IPFW.RData")[2]
-load(paste0(dirname(dirname(getwd())), "/Github/manuscript_trait_matching/data/data_prep_IPFW.RData"))[2]
+load("./data/data_prep_IPFW.RData")[2]
+#load(paste0(dirname(dirname(getwd())), "/Github/manuscript_trait_matching/data/data_prep_IPFW.RData"))[2]
 
 source(file = "./functions/functions_plotting.R")
 source(file = "./functions/functions_metawebs.R")
