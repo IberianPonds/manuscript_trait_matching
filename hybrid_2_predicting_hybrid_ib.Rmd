@@ -54,7 +54,6 @@ hybrid_interact_con_res_ib_with_species_codes <- hybrid_interact_con_res_ib_with
 
 ## Step 2: Mean decrease Gini (contribution of each trait)
 The ‘mean decrease Gini’ (total decrease in node impurities from splitting on the variable) is proportional to the contribution of each trait in the model. High mean decrease Gini represents a high importance of the variable. 
-
 ```{r fig.cap="trait contribution randomForest", fig.width=7}
 # extract contribution of each trait
 importance_traits <- importance(rf_object, type = 2)
@@ -67,7 +66,7 @@ table <- data.frame(traits = row.names(importance_traits), importance_traits, ro
 table_ib <- data.frame(table[order(table$IncNodePurity, decreasing = T),], row.names = NULL)
 ```
 
-
+#Gini plots
 ```{r}
 png(file="./figures/giniplots_hybrid.png", width = 10, height = 6, units = 'in', res= 300)
 p1<- table_brose %>%
@@ -102,9 +101,6 @@ hybrid_interact_con_res_ib <- cbind(hybrid_interact_con_res_ib_with_species_code
 
 
 ```{r}
-#RandomForest only
-# Use quartile function to get threshold value for different types of interaction 
-
 predator_interactions <- hybrid_interact_con_res_ib %>%
   dplyr::filter(con_feeding_type.predator == "1")
 # omnivores
@@ -113,8 +109,7 @@ omnivores_interactions <- hybrid_interact_con_res_ib %>%
 herbivore_interactions <- hybrid_interact_con_res_ib %>%
   dplyr::filter(con_feeding_type.herbivore == "1") # here we have only herbivores
 
-
-
+#getting top 25% of the interactions for different interaction types
 T_pred <- quantile(predator_interactions$pred1, c(.75))
 T_omni <- quantile(omnivores_interactions$pred1, c(.75))
 T_herb <- quantile(herbivore_interactions$pred1, c(.75))
