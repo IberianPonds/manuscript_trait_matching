@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Predicting interactions"
 ---
 
 
@@ -49,8 +49,7 @@ load("./data/hybrid_data_trait_phylo.RData")
 hybrid_interact_con_res_ib <-
   hybrid_interact_con_res_ib %>% drop_na(.)
 
-hybrid_interact_con_res_ib_with_species_codes <-
-  hybrid_interact_con_res_ib_with_species_codes %>% drop_na(.)
+hybrid_interact_con_res_ib_with_species_codes <- hybrid_interact_con_res_ib_with_species_codes %>% drop_na(.)
 ```
 
 ## Step 2: Mean decrease Gini (contribution of each trait)
@@ -103,23 +102,36 @@ hybrid_interact_con_res_ib <- cbind(hybrid_interact_con_res_ib_with_species_code
 
 
 ```{r}
-#RandomForest only when RF>0.5 
-# Use 0.5 threshold value for all interaction types
-TR_all <- 0.5
+#RandomForest only
+# Use quartile function to get threshold value for different types of interaction 
+
+predator_interactions <- hybrid_interact_con_res_ib %>%
+  dplyr::filter(con_feeding_type.predator == "1")
+# omnivores
+omnivores_interactions <- hybrid_interact_con_res_ib %>%
+  dplyr::filter(con_feeding_type.omnivore == 1) # here we have others (herbivore, omnivore, detritivore) except predators
+herbivore_interactions <- hybrid_interact_con_res_ib %>%
+  dplyr::filter(con_feeding_type.herbivore == "1") # here we have only herbivores
+
+
+
+T_pred <- quantile(predator_interactions$pred1, c(.75))
+T_omni <- quantile(omnivores_interactions$pred1, c(.75))
+T_herb <- quantile(herbivore_interactions$pred1, c(.75))
 
 hybrid_rf_interactions <- hybrid_interact_con_res_ib
 
 ### select predator interactions
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.predator==1 & hybrid_rf_interactions$pred1 >= TR_all,]$value <- 1
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.predator==1 & hybrid_rf_interactions$pred1 < TR_all,]$value <- 0
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.predator==1 & hybrid_rf_interactions$pred1 >= T_pred,]$value <- 1
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.predator==1 & hybrid_rf_interactions$pred1 < T_pred,]$value <- 0
 
 ### select omnivore interactions
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.omnivore==1 & hybrid_rf_interactions$pred1 >= TR_all,]$value <- 1
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.omnivore==1 & hybrid_rf_interactions$pred1 < TR_all,]$value <- 0
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.omnivore==1 & hybrid_rf_interactions$pred1 >= T_omni,]$value <- 1
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.omnivore==1 & hybrid_rf_interactions$pred1 < T_omni,]$value <- 0
   
 ### select herbivore interactions
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.herbivore==1 & hybrid_rf_interactions$pred1 >= TR_all,]$value <- 1
-hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.herbivore==1 & hybrid_rf_interactions$pred1 < TR_all,]$value <- 0
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.herbivore==1 & hybrid_rf_interactions$pred1 >= T_herb,]$value <- 1
+hybrid_rf_interactions[hybrid_rf_interactions$con_feeding_type.herbivore==1 & hybrid_rf_interactions$pred1 < T_herb,]$value <- 0
 
 colnames(hybrid_rf_interactions)[colnames(hybrid_rf_interactions)=="value"] <- "weight"
 
@@ -134,8 +146,6 @@ names(hybrid_rf_edges)[names(hybrid_rf_edges) == "res_code"] <- "to"
 hybrid_rf_graph <- prepare_graphs_plotting(hybrid_rf_edges, hybrid_data_trait_phylo, .column_name = "unique_id")
 
 # add detritus
-hybrid_rule_based_graph <- add_detritus_to_graph(.graph = hybrid_rule_based_graph)
-hybrid_rf_priority_graph <- add_detritus_to_graph(.graph = hybrid_rf_priority_graph)
 hybrid_rf_graph <- add_detritus_to_graph(.graph = hybrid_rf_graph)
 
 
