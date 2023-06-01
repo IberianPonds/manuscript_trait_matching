@@ -3,7 +3,7 @@ title: "Trait-matching model"
 ---
 
 ## Description:
-This script uses one independent dataset (Brose et al. 2019) to infer food web interactions in Iberian Ponds hybrid dataset (morphological+ edna) (Pereira et al.2021), by applying trait matching (adapted from Laigle et al. 2018).
+This script uses one independent dataset (GATEWay database; Brose, 2018, Brose et al., 2019) to infer food web interactions in Iberian Ponds hybrid dataset (morphological + eDNA) (Pereira et al.2021), by applying trait-matching (adapted from Laigle et al. 2018).
 
 
 ```{r include = FALSE}
@@ -14,7 +14,7 @@ library(tidyr)
 ```
 
 ```{r include=FALSE}
-# load independent data:  Brose et al 2019
+# load data
 load(file = "./data/hybrid_interact_con_res_ib.RData")
 ```
 
@@ -32,3 +32,10 @@ hybrid_rf_mod_ib <- randomForest(value ~ ., data = hybrid_interact_con_res_ib, i
 # save objects
 #save(hybrid_rf_mod_ib, file = "./output/hybrid_rf_mod_ib.RData")
 ```
+
+
+## References
+Brose U. 2018. GlobAL daTabasE of traits and food web Architecture (GATEWAy) v.1.0. iDiv Data Repository accessed 17 April 2019.
+Brose U, Archambault P, Barnes AD, Bersier L-F, Boy T, Canning-Clode J, Conti E, Dias M, Digel C, Dissanayake A, Flores AAV, Fussmann K, Gauzens B, Gray C, Häussler J, Hirt MR, Jacob U, Jochum M, Kéfi S, McLaughlin O, MacPherson MM, Latz E, Layer-Dobra K, Legagneux P, Li Y, Madeira C, Martinez ND, Mendonça V, Mulder C, Navarrete SA, O’Gorman EJ, Ott D, Paula J, Perkins D, Piechnik D, Pokrovsky I, Raffaelli D, Rall BC, Rosenbaum B, Ryser R, Silva A, Sohlström EH, Sokolova N, Thompson MSA, Thompson RM, Vermandele F, Vinagre C, Wang S, Wefer JM, Williams RJ, Wieters E, Woodward G, Iles AC. 2019. Predator traits determine food-web architecture across ecosystems. Nature Ecology & Evolution 3: 919–927.
+Laigle I, Aubin I, Digel C, Brose U, Boulangeat I, Gravel D. 2018. Species traits as drivers of food web structure. Oikos 127: 316–326.
+Pereira CL, Gilbert MTP, Araújo MB, Matias MG. 2021. Fine‐tuning biodiversity assessments: A framework to pair eDNA metabarcoding and morphological approaches. Methods in Ecology and Evolution 12: 2397–2409.

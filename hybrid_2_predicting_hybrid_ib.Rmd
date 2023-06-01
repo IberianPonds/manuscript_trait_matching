@@ -88,7 +88,7 @@ dev.off()
 ```
 
 
-### Step 3: Predicting interaction in the Iberian Pond Network (IPN) based on Brose dataset(independent interactions dataset) randomforest model
+### Step 3: Predicting interaction in the Iberian Pond Network (IPN) based on Brose dataset (independent interactions dataset) randomforest model
 ```{r, fig.cap = "Predicted IberianPonds (using randomForest Brose)"}
 set.seed(1234)
 
