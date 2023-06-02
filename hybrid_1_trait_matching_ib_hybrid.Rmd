@@ -27,7 +27,8 @@ hybrid_interact_con_res_ib <-
 # Building randomforest models for IPN Hybrid
 ```{r}
 # run random forest 
-hybrid_rf_mod_ib <- randomForest(value ~ ., data = hybrid_interact_con_res_ib, importance=TRUE)
+hybrid_rf_mod_ib <- randomForest(value ~ ., data = hybrid_interact_con_res_ib, importance=TRUE) 
+# if the code breaks at this step due to memory issues, the randomForest object that is generated here is also provided in "./output/hybrid_rf_mod_ib.RData".
 
 # save objects
 #save(hybrid_rf_mod_ib, file = "./output/hybrid_rf_mod_ib.RData")
